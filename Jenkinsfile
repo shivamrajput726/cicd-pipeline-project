@@ -9,7 +9,7 @@ pipeline {
   environment {
     IMAGE_NAME = "sample-cicd-app"
     CONTAINER_NAME = "sample-cicd-app"
-    APP_PORT = "3000"
+    APP_PORT = "3001"
   }
 
   stages {
@@ -32,11 +32,10 @@ pipeline {
       steps {
         sh """
           docker rm -f ${CONTAINER_NAME} || true
-          docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}:latest
+          docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:3000 ${IMAGE_NAME}:latest
           docker ps --filter "name=${CONTAINER_NAME}"
         """
       }
     }
   }
 }
-
