@@ -24,7 +24,7 @@ Developer -> GitHub Repo
      App Container (sample-cicd-app:latest)
                 |
                 v
-      http://localhost:3000  (API)
+      http://localhost:3001  (API)
 ```
 
 ## Repository structure
@@ -112,21 +112,26 @@ The pipeline is defined in `Jenkinsfile` and has three stages:
 
 - Jenkins builds the app image using the root `Dockerfile`.
 - Output: Docker image tagged as:
-  - `sample-cicd-app:latest`
-  - `sample-cicd-app:<BUILD_NUMBER>`
+  - `<DOCKERHUB_REPO>:latest`
+  - `<DOCKERHUB_REPO>:<BUILD_NUMBER>`
 
-### Stage 3: Run container
+### Stage 3: Push image to Docker Hub
+
+- Jenkins logs in to Docker Hub using Jenkins credentials.
+- Pushes both tags (`latest` and `<BUILD_NUMBER>`) to your Docker Hub repo.
+
+### Stage 4: Run container
 
 - Removes any previous container named `sample-cicd-app`
-- Runs the latest image in detached mode and maps port `3000:3000`
+- Runs the latest image in detached mode and maps port `3001:3001`
 - Output: running container serving the app locally
 
 ## Verify the deployment
 
 After a successful pipeline run:
 
-- http://localhost:3000/ (JSON response)
-- http://localhost:3000/health (health check)
+- http://localhost:3001/ (JSON response)
+- http://localhost:3001/health (health check)
 
 Check running containers:
 
@@ -153,4 +158,3 @@ docker compose down -v
 - Built a Jenkins CI/CD pipeline to automatically checkout GitHub code, build a Docker image, and deploy a containerized Node.js app.
 - Containerized Jenkins using Docker Compose and enabled Docker builds inside Jenkins via Docker socket mounting.
 - Implemented repeatable deployments by version-tagging Docker images with Jenkins build numbers.
-
