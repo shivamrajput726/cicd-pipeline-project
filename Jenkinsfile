@@ -32,6 +32,21 @@ pipeline {
       }
     }
 
+    stage("Validate configuration") {
+      steps {
+        sh """
+          if [ -z "${DOCKERHUB_REPO}" ] || [ "${DOCKERHUB_REPO}" = "yourdockerhubusername/sample-cicd-app" ]; then
+            echo "ERROR: Set DOCKERHUB_REPO to your Docker Hub repo (example: myuser/sample-cicd-app)."
+            exit 1
+          fi
+          case "${DOCKERHUB_REPO}" in
+            */*) : ;;
+            *) echo "ERROR: DOCKERHUB_REPO must look like username/repo."; exit 1 ;;
+          esac
+        """
+      }
+    }
+
     stage("Build Docker image") {
       steps {
         sh """
@@ -45,7 +60,7 @@ pipeline {
       steps {
         withCredentials([
           usernamePassword(
-            credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
+            credentialsId: "${env.DOCKERHUB_CREDENTIALS_ID}",
             usernameVariable: "DOCKERHUB_USERNAME",
             passwordVariable: "DOCKERHUB_PASSWORD"
           )
