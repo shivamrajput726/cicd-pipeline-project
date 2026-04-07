@@ -4,6 +4,8 @@ pipeline {
   options {
     timestamps()
     skipDefaultCheckout(true)
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: "20"))
   }
 
   triggers {
@@ -16,6 +18,21 @@ pipeline {
       defaultValue: "yourdockerhubusername/sample-cicd-app",
       description: "Docker Hub image name (example: myuser/sample-cicd-app)"
     )
+    booleanParam(
+      name: "RUN_TESTS",
+      defaultValue: true,
+      description: "Run unit tests (inside a Node.js Docker container)"
+    )
+    booleanParam(
+      name: "PUSH_IMAGE",
+      defaultValue: true,
+      description: "Push Docker image tags to Docker Hub"
+    )
+    booleanParam(
+      name: "DEPLOY_CONTAINER",
+      defaultValue: true,
+      description: "Run/replace the app container locally after build"
+    )
   }
 
   environment {
@@ -23,6 +40,7 @@ pipeline {
     APP_PORT = "3001"
     DOCKERHUB_REPO = "${params.DOCKERHUB_REPO}"
     DOCKERHUB_CREDENTIALS_ID = "dockerhub-creds"
+    DOCKER_BUILDKIT = "1"
   }
 
   stages {
@@ -47,16 +65,30 @@ pipeline {
       }
     }
 
+    stage("Unit tests") {
+      when {
+        expression { return params.RUN_TESTS }
+      }
+      steps {
+        sh """
+          docker run --rm -v "$PWD/app":/app -w /app node:20-alpine sh -lc "npm ci && npm test"
+        """
+      }
+    }
+
     stage("Build Docker image") {
       steps {
         sh """
           docker version
-          docker build -t ${DOCKERHUB_REPO}:latest -t ${DOCKERHUB_REPO}:${BUILD_NUMBER} .
+          docker build --pull -t ${DOCKERHUB_REPO}:latest -t ${DOCKERHUB_REPO}:${BUILD_NUMBER} .
         """
       }
     }
 
     stage("Push image to Docker Hub") {
+      when {
+        expression { return params.PUSH_IMAGE }
+      }
       steps {
         withCredentials([
           usernamePassword(
@@ -82,13 +114,24 @@ pipeline {
     }
 
     stage("Run container") {
+      when {
+        expression { return params.DEPLOY_CONTAINER }
+      }
       steps {
         sh """
           docker rm -f ${CONTAINER_NAME} || true
-          docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${DOCKERHUB_REPO}:latest
+          docker run -d --restart unless-stopped --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${DOCKERHUB_REPO}:latest
           docker ps --filter "name=${CONTAINER_NAME}"
         """
       }
+    }
+  }
+
+  post {
+    always {
+      sh """
+        docker ps --all --filter "name=${CONTAINER_NAME}" || true
+      """
     }
   }
 }

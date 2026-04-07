@@ -1,4 +1,7 @@
 node_modules/
 **/*.log
 .env
-
+.DS_Store
+.vscode/
+jenkins_home/
+.npm-cache/
